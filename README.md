@@ -37,32 +37,47 @@ YouTube Shorts、TikTok、Instagram リール（9:16 縦長動画）の編集・
 
 ---
 
-## 🌐 GitHub Pages（Static HTML / Jekyll無効化）での公開手順
+## 🌐 GitHub Pages（画面が真っ白になる場合の解決手順）
 
-本リポジトリは、GitHub Pages に **Static HTML（静的HTML）** としてそのまま反映できるように構成されています。
+React (Vite) プロジェクトを GitHub Pages で公開する際、**初期設定のまま「Deploy from a branch > main / (root)」を選ぶと、未コンパイルの TypeScript コード (`/src/main.tsx`) がそのまま読み込まれてブラウザが実行できず画面が真っ白（404エラー）になります。**
 
-### 1. 本リポジトリに含まれる設定
+本リポジトリでは**すでに修正・ビルド済みのファイル（`/docs` および GitHub Actions 設定）を完備**していますので、以下のどちらか**1つ**を行うだけで正常に表示されます。
 
-- **`public/.nojekyll`**:  
-  GitHub Pages の標準Jekyllビルド処理を無効化し、Viteが出力するアセット（CSS/JS）を正確にStatic HTMLとして配信します。
-- **`vite.config.ts` (`base: './'`)**:  
-  相対パスでビルドされるため、GitHub Pages のサブディレクトリURL（`https://<ユーザー名>.github.io/<リポジトリ名>/`）でもアセットが404にならず正常に読み込まれます。
-- **`.github/workflows/deploy.yml`**:  
-  mainブランチへのプッシュ時に自動でビルド＆デプロイを実行する GitHub Actions 設定です。
+---
 
-### 2. GitHub Pages の有効化手順（推奨: GitHub Actions）
+### 【方法A（最もおすすめ・1分で解決）】 `/docs` フォルダからの配信に切り替える
 
-1. GitHub のリポジトリページを開きます。
-2. 上部メニューの **[Settings]** タブをクリックします。
-3. 左サイドバーの **[Pages]** を選択します。
-4. **「Build and deployment」** の **「Source」** を **「GitHub Actions」** に変更します。
-5. リポジトリの `main`（または `master`）ブランチに変更をプッシュ（または Actions タブから手動実行）すると、自動的にビルドが行われ、公開URLが発行されます。
+リポジトリ内に完全ビルド済みの `/docs` フォルダ（Jekyll無効化 `.nojekyll` 付き）を用意しています。GitHub Actions の待機時間なしですぐに反映されます。
 
-### 3. クラシック方式（Static HTML / gh-pages ブランチ）で公開する場合
+1. GitHub リポジトリ（`testman40/video-editor-tool`）の **[Settings]** タブを開きます。
+2. 左メニューの **[Pages]** をクリックします。
+3. **「Build and deployment」** の設定を以下のように指定します：
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main`（または `master`）
+   - **Folder**: `/docs` **← ここを `/(root)` から `/docs` に変更！**
+4. **[Save]** をクリックします。
+5. 数分後に `https://testman40.github.io/video-editor-tool/` を再読み込み（Ctrl + F5 または Shift + リロード）すると、正常にエディタ画面が表示されます！
 
-1. ローカルで `npm run build` を実行します。
-2. `dist` フォルダの中身（`index.html`, `assets/`, `.nojekyll` 等）を `gh-pages` ブランチのルートにプッシュします。
-3. **[Settings] > [Pages]** で **「Source」** を **「Deploy from a branch」** にし、ブランチを `gh-pages` / `/(root)` に設定して保存します。
+---
+
+### 【方法B】 GitHub Actions による自動ビルド＆デプロイを使う
+
+`.github/workflows/deploy.yml` が含まれているため、GitHub 側でビルドを自動実行させることも可能です。
+
+1. GitHub リポジトリの **[Settings]** > **[Pages]** を開きます。
+2. **「Build and deployment」** の **「Source」** ドロップダウンを、`Deploy from a branch` から **「GitHub Actions」** に変更します。
+3. リポジトリ上部の **[Actions]** タブを開き、「Deploy to GitHub Pages」ワークフローが緑色のチェックマーク（完了）になるのを待ちます。
+4. 完了後、サイトが正常に表示されます。
+
+---
+
+### 🛠️ 本リポジトリで適用済みの対策
+
+- **`docs/` フォルダの自動同期**: `npm run build` 実行時に `dist` と `docs` が同時に最新ビルドで生成されます。
+- **`public/.nojekyll` / `docs/.nojekyll`**: GitHub Pages 標準の Jekyll 処理を無効化し、アンダースコア付きファイルやViteアセットを直接配信。
+- **`vite.config.ts` (`base: './'`)**: リポジトリ名サブパス（`/video-editor-tool/`）に依存しない相対リンク指定。
+- **フォールバックリダイレクト**: 万が一ルートの `index.html` が読み込まれた場合でも、スクリプトエラーを検知して自動で `./docs/` へリダイレクトする復旧スクリプトを内蔵。
+- **エラーバウンダリ（ErrorBoundary）**: ブラウザ差異によるランタイムエラー発生時も白画面にならず、復旧用リロードUIを表示。
 
 ---
 

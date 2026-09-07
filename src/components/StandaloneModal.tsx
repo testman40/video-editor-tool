@@ -100,7 +100,7 @@ export const StandaloneModal: React.FC<StandaloneModalProps> = ({ isOpen, onClos
             </button>
 
             <a
-              href="/standalone.html"
+              href={`${import.meta.env.BASE_URL || './'}standalone.html`}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition active:scale-95"

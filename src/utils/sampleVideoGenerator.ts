@@ -11,43 +11,61 @@ export async function generateSampleShortsVideo(durationSec = 6): Promise<{ blob
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not get canvas context');
 
-  // Audio generation using AudioContext
-  const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const audioCtx = new AudioCtx();
-  const dest = audioCtx.createMediaStreamDestination();
+  // Audio generation using AudioContext (safe against browser autoplay restrictions)
+  let audioTracks: MediaStreamTrack[] = [];
+  let osc: OscillatorNode | null = null;
+  let audioCtx: AudioContext | null = null;
 
-  // Create oscillator for subtle background melodic rhythm
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-  osc.connect(gain);
-  gain.connect(dest);
-  osc.start();
+  try {
+    const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (AudioCtxClass) {
+      audioCtx = new AudioCtxClass();
+      if (audioCtx.createMediaStreamDestination) {
+        const dest = audioCtx.createMediaStreamDestination();
+        osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start();
 
-  // Note arpeggio scheduling
-  const notes = [440, 554.37, 659.25, 880, 659.25, 554.37];
-  for (let i = 0; i < durationSec * 2; i++) {
-    const t = audioCtx.currentTime + i * 0.5;
-    osc.frequency.setValueAtTime(notes[i % notes.length], t);
+        const notes = [440, 554.37, 659.25, 880, 659.25, 554.37];
+        for (let i = 0; i < durationSec * 2; i++) {
+          const t = audioCtx.currentTime + i * 0.5;
+          osc.frequency.setValueAtTime(notes[i % notes.length], t);
+        }
+        audioTracks = dest.stream.getAudioTracks();
+      }
+    }
+  } catch (audioErr) {
+    console.warn('AudioContext skipped or restricted by browser:', audioErr);
   }
 
-  // Combine canvas stream and audio stream
-  const canvasStream = canvas.captureStream(30);
+  // Combine canvas stream and audio stream safely
+  const captureStreamFn = canvas.captureStream || (canvas as unknown as { mozCaptureStream?: (fps: number) => MediaStream }).mozCaptureStream;
+  if (!captureStreamFn) {
+    throw new Error('canvas.captureStream is not supported');
+  }
+  const canvasStream = captureStreamFn.call(canvas, 30);
   const combinedStream = new MediaStream([
     ...canvasStream.getVideoTracks(),
-    ...dest.stream.getAudioTracks(),
+    ...audioTracks,
   ]);
 
   // Determine supported mimeType
   let mimeType = 'video/webm; codecs=vp8,opus';
-  if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9,opus')) {
-    mimeType = 'video/webm; codecs=vp9,opus';
-  } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-    mimeType = 'video/mp4';
-  } else if (MediaRecorder.isTypeSupported('video/webm')) {
-    mimeType = 'video/webm';
+  if (typeof MediaRecorder !== 'undefined') {
+    if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9,opus')) {
+      mimeType = 'video/webm; codecs=vp9,opus';
+    } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+      mimeType = 'video/mp4';
+    } else if (MediaRecorder.isTypeSupported('video/webm')) {
+      mimeType = 'video/webm';
+    }
+  } else {
+    throw new Error('MediaRecorder is not supported');
   }
 
   const recorder = new MediaRecorder(combinedStream, {
