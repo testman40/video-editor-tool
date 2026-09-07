@@ -2,5 +2,7 @@
   "name": "Shorts 9:16 Video Editor",
   "description": "Browser-based 9:16 vertical video editor with canvas overlay, watermark stamps, zoom effects, color grading, and MP4 export.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
