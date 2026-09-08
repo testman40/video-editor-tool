@@ -69,7 +69,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
   // Custom text form state
   const [customText, setCustomText] = useState('マイチャンネル @Channel');
-  const [fontSize, setFontSize] = useState(54);
+  const [fontSize, setFontSize] = useState<number | ''>(54);
   const [textColor, setTextColor] = useState('#ffffff');
   const [textBgColor, setTextBgColor] = useState('rgba(0, 0, 0, 0.7)');
 
@@ -449,15 +449,61 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-zinc-300 mb-1.5">フォントサイズ (px)</label>
-                    <input
-                      type="number"
-                      min={24}
-                      max={140}
-                      step={2}
-                      value={fontSize}
-                      onChange={(e) => setFontSize(parseInt(e.target.value, 10) || 54)}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1.5 text-sm text-zinc-100 font-mono focus:outline-none focus:border-indigo-500"
-                    />
+                    <div className="space-y-1.5">
+                      <div className="relative flex items-center">
+                        <input
+                          type="number"
+                          min={16}
+                          max={160}
+                          step={2}
+                          value={fontSize}
+                          placeholder="54"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '') {
+                              setFontSize('');
+                            } else {
+                              const parsed = parseInt(val, 10);
+                              setFontSize(isNaN(parsed) ? '' : parsed);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (fontSize === '' || (typeof fontSize === 'number' && fontSize < 16)) {
+                              setFontSize(54);
+                            } else if (typeof fontSize === 'number' && fontSize > 160) {
+                              setFontSize(160);
+                            }
+                          }}
+                          className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1.5 pr-8 text-sm text-zinc-100 font-mono focus:outline-none focus:border-indigo-500"
+                        />
+                        {fontSize !== '' && (
+                          <button
+                            type="button"
+                            onClick={() => setFontSize('')}
+                            title="クリア"
+                            className="absolute right-2 text-zinc-500 hover:text-zinc-200 text-xs px-1 py-0.5 rounded transition"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                        {[32, 44, 54, 72, 96].map((sz) => (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() => setFontSize(sz)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono border transition shrink-0 ${
+                              fontSize === sz
+                                ? 'bg-indigo-600 text-white border-indigo-500 font-bold shadow-sm'
+                                : 'bg-zinc-800/80 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                            }`}
+                          >
+                            {sz}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -502,7 +548,10 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => onAddText(customText, fontSize, textColor, textBgColor)}
+                  onClick={() => {
+                    const finalSize = typeof fontSize === 'number' && fontSize > 0 ? fontSize : 54;
+                    onAddText(customText, finalSize, textColor, textBgColor);
+                  }}
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition active:scale-95"
                 >
                   <Plus className="w-4 h-4" />
@@ -657,6 +706,57 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                                 </select>
                               </div>
                             </div>
+
+                            {item.type === 'text' && (
+                              <div className="pt-1">
+                                <label className="block text-[11px] text-zinc-400 mb-1">
+                                  フォントサイズ ({item.fontSize || 54}px)
+                                </label>
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    min={16}
+                                    max={160}
+                                    step={2}
+                                    value={item.fontSize ?? ''}
+                                    placeholder="54"
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === '') {
+                                        onUpdateOverlay(item.id, { fontSize: undefined });
+                                      } else {
+                                        const num = parseInt(val, 10);
+                                        if (!isNaN(num)) {
+                                          onUpdateOverlay(item.id, { fontSize: num });
+                                        }
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      if (!item.fontSize || item.fontSize < 16) {
+                                        onUpdateOverlay(item.id, { fontSize: 54 });
+                                      }
+                                    }}
+                                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-zinc-100 font-mono focus:outline-none focus:border-indigo-500"
+                                  />
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {[36, 54, 72].map((sz) => (
+                                      <button
+                                        key={sz}
+                                        type="button"
+                                        onClick={() => onUpdateOverlay(item.id, { fontSize: sz })}
+                                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono border transition ${
+                                          item.fontSize === sz
+                                            ? 'bg-indigo-600 text-white border-indigo-500 font-bold'
+                                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                                        }`}
+                                      >
+                                        {sz}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
