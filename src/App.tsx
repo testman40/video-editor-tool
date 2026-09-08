@@ -1,21 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, SlidersHorizontal } from 'lucide-react';
+import { Play, SlidersHorizontal, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Header } from './components/Header';
 import { CanvasPreview } from './components/CanvasPreview';
 import { SidebarTabs } from './components/SidebarTabs';
 import { ExportModal } from './components/ExportModal';
 import { StandaloneModal } from './components/StandaloneModal';
-import { ColorFilterSettings, OverlayItem, ZoomAnimation } from './types';
+import { ColorFilterSettings, OverlayItem, ZoomAnimation, VideoLoadState } from './types';
 import { generateSampleShortsVideo } from './utils/sampleVideoGenerator';
 import { exportShortsVideo, ExportProgress } from './utils/exportVideo';
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoLoadTimerRef = useRef<number | null>(null);
 
   // Mobile View Switcher (Preview vs Editing Tools)
   const [mobileView, setMobileView] = useState<'preview' | 'tools'>('preview');
 
-  // Video State
+  // Video State & Diagnostic Check
   const [videoSrc, setVideoSrc] = useState<string>('');
   const [videoDuration, setVideoDuration] = useState<number>(6);
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -23,6 +24,9 @@ export default function App() {
   const [isLooping, setIsLooping] = useState<boolean>(true);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isLoadingSample, setIsLoadingSample] = useState<boolean>(false);
+  const [videoLoadState, setVideoLoadState] = useState<VideoLoadState>({
+    status: 'idle',
+  });
 
   // Overlays State (Stamps, Texts, Images)
   const [overlays, setOverlays] = useState<OverlayItem[]>([
@@ -164,29 +168,168 @@ export default function App() {
   const handleLoadSampleVideo = async () => {
     try {
       setIsLoadingSample(true);
+      setVideoLoadState({
+        status: 'loading',
+        fileName: '9:16 サンプル動画 (自動生成)',
+      });
       const { url } = await generateSampleShortsVideo(6);
-      loadVideo(url);
+      loadVideo(url, '9:16 サンプル動画 (Shorts対応)', 2.4 * 1024 * 1024, 'video/mp4');
     } catch (e) {
       console.error('Failed to generate sample video:', e);
+      setVideoLoadState({
+        status: 'error',
+        fileName: '9:16 サンプル動画',
+        errorMessage: 'サンプル動画の生成に失敗しました。',
+        errorDetail: String(e),
+      });
     } finally {
       setIsLoadingSample(false);
     }
   };
 
-  const loadVideo = (url: string) => {
-    if (!videoRef.current) return;
+  const loadVideo = (
+    url: string,
+    fileName: string = '動画ファイル',
+    fileSize: number = 0,
+    mimeType: string = 'video/mp4'
+  ) => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    if (videoLoadTimerRef.current) {
+      window.clearTimeout(videoLoadTimerRef.current);
+      videoLoadTimerRef.current = null;
+    }
+
     setVideoSrc(url);
-    videoRef.current.src = url;
-    videoRef.current.load();
-    videoRef.current.currentTime = 0;
-    setCurrentTime(0);
     setIsPlaying(false);
+    setCurrentTime(0);
+
+    setVideoLoadState({
+      status: 'loading',
+      fileName,
+      fileSize,
+    });
+
+    const onLoadedMetadata = () => {
+      if (videoLoadTimerRef.current) {
+        window.clearTimeout(videoLoadTimerRef.current);
+        videoLoadTimerRef.current = null;
+      }
+
+      const dur = v.duration || 6;
+      const width = v.videoWidth || 1080;
+      const height = v.videoHeight || 1920;
+      const isPortrait = height >= width;
+      const sizeMB = fileSize > 0 ? Number((fileSize / (1024 * 1024)).toFixed(2)) : 2.5;
+
+      const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+      const divisor = gcd(Math.round(width), Math.round(height)) || 1;
+      const aspectSimple = `${Math.round(width / divisor)}:${Math.round(height / divisor)}`;
+
+      setVideoDuration(dur);
+      setZoom((prev) => ({
+        ...prev,
+        endTime: Math.min(dur, Math.max(2, dur * 0.7)),
+      }));
+
+      setVideoLoadState({
+        status: 'loaded',
+        fileName,
+        fileSize,
+        diagnostics: {
+          name: fileName,
+          sizeMB,
+          width,
+          height,
+          duration: dur,
+          aspectRatio: aspectSimple,
+          isPortrait,
+          hasAudio: true,
+          mimeType: mimeType || 'video/mp4',
+        },
+      });
+    };
+
+    const onError = () => {
+      if (videoLoadTimerRef.current) {
+        window.clearTimeout(videoLoadTimerRef.current);
+        videoLoadTimerRef.current = null;
+      }
+
+      const err = v.error;
+      let msg = '動画の読み込みに失敗しました。';
+      let detail = 'お使いのブラウザまたは端末がこの動画形式に対応していない可能性があります。';
+
+      if (err) {
+        switch (err.code) {
+          case 1:
+            msg = '読み込みが中断されました';
+            detail = '動画の読み込み処理が途中でキャンセルされました。';
+            break;
+          case 2:
+            msg = 'ネットワークエラー';
+            detail = '動画ファイルの読み込み中に通信またはデータ読み込みエラーが発生しました。';
+            break;
+          case 3:
+            msg = '動画デコード（解析）エラー';
+            detail = 'ファイルが破損しているか、ブラウザが対応していないビデオコーデックです。';
+            break;
+          case 4:
+            msg = '非対応の動画形式・コーデック';
+            detail = 'iPhone等の高効率(HEVC / H.265)やProRes形式はブラウザで直接再生できない場合があります。標準的なH.264のMP4形式をお試しいただくか、サンプル動画をお使いください。';
+            break;
+          default:
+            detail = err.message || detail;
+        }
+      }
+
+      setVideoLoadState({
+        status: 'error',
+        fileName,
+        fileSize,
+        errorMessage: msg,
+        errorDetail: detail,
+      });
+    };
+
+    v.onloadedmetadata = onLoadedMetadata;
+    v.onerror = onError;
+
+    // Timeout guard for mobile Safari when media hangs without emitting events
+    videoLoadTimerRef.current = window.setTimeout(() => {
+      if (v.readyState === 0 && !v.videoWidth) {
+        setVideoLoadState({
+          status: 'error',
+          fileName,
+          fileSize,
+          errorMessage: '読み込みタイムアウト（応答なし）',
+          errorDetail: 'ブラウザがこの動画形式（iPhone高効率HEVC形式や非対応コンテナ等）をデコードできない可能性があります。MP4形式への変換またはサンプル動画をお試しください。',
+        });
+      }
+    }, 9000);
+
+    v.src = url;
+    v.load();
   };
 
   // Video File Upload Handler
   const handleFileUpload = (file: File) => {
+    if (!file) return;
+
+    if (file.size === 0) {
+      setVideoLoadState({
+        status: 'error',
+        fileName: file.name,
+        fileSize: 0,
+        errorMessage: 'ファイルサイズが0バイトです',
+        errorDetail: '選択された動画ファイルが空です。有効な動画を選択してください。',
+      });
+      return;
+    }
+
     const url = URL.createObjectURL(file);
-    loadVideo(url);
+    loadVideo(url, file.name, file.size, file.type);
   };
 
   // Playback Control Handlers
@@ -386,6 +529,7 @@ export default function App() {
         onOpenStandaloneModal={() => setIsStandaloneModalOpen(true)}
         isLoadingSample={isLoadingSample}
         hasVideo={Boolean(videoSrc)}
+        videoLoadState={videoLoadState}
       />
 
       {/* Mobile View Switcher (Segmented Control for Smartphones) */}
@@ -399,8 +543,17 @@ export default function App() {
               : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <Play className="w-3.5 h-3.5" />
+          {videoLoadState.status === 'loading' ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+          ) : videoLoadState.status === 'error' ? (
+            <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+          ) : (
+            <Play className="w-3.5 h-3.5" />
+          )}
           <span>プレビュー</span>
+          {videoLoadState.status === 'loaded' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          )}
         </button>
         <button
           type="button"
@@ -413,6 +566,11 @@ export default function App() {
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           <span>編集ツール {overlays.length > 0 && `(${overlays.length})`}</span>
+          {videoLoadState.status === 'error' && (
+            <span className="px-1.5 py-0.2 bg-rose-500 text-white rounded-full text-[9px] font-bold">
+              要確認
+            </span>
+          )}
         </button>
       </div>
 
@@ -436,6 +594,8 @@ export default function App() {
             onDeleteOverlay={handleDeleteOverlay}
             onRestoreOverlay={handleRestoreOverlay}
             onOpenMobileTools={() => setMobileView('tools')}
+            onLoadSample={handleLoadSampleVideo}
+            videoLoadState={videoLoadState}
             onTogglePlay={handleTogglePlay}
             onStop={handleStop}
             onSeek={handleSeek}
@@ -466,6 +626,7 @@ export default function App() {
             onStartExport={handleStartExport}
             hasVideo={Boolean(videoSrc)}
             onSwitchToPreview={() => setMobileView('preview')}
+            videoLoadState={videoLoadState}
           />
         </div>
       </main>

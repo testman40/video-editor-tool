@@ -66,3 +66,24 @@ export interface VideoInfo {
   height: number;
   hasAudio: boolean;
 }
+
+export interface VideoDiagnosticInfo {
+  name: string;
+  sizeMB: number;
+  width: number;
+  height: number;
+  duration: number;
+  aspectRatio: string;
+  isPortrait: boolean;
+  hasAudio: boolean;
+  mimeType: string;
+}
+
+export interface VideoLoadState {
+  status: 'idle' | 'loading' | 'loaded' | 'error';
+  fileName?: string;
+  fileSize?: number;
+  errorMessage?: string;
+  errorDetail?: string;
+  diagnostics?: VideoDiagnosticInfo;
+}

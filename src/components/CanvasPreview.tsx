@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Play, Pause, Square, Repeat, Volume2, VolumeX, Move, Trash2, Check, RotateCcw, Type } from 'lucide-react';
-import { ColorFilterSettings, OverlayItem, ZoomAnimation } from '../types';
+import { Play, Pause, Square, Repeat, Volume2, VolumeX, Move, Trash2, Check, RotateCcw, Type, AlertTriangle, Loader2, CheckCircle2, Film } from 'lucide-react';
+import { ColorFilterSettings, OverlayItem, ZoomAnimation, VideoLoadState } from '../types';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, renderFrame } from '../utils/canvasRenderer';
 
 interface CanvasPreviewProps {
@@ -19,6 +19,8 @@ interface CanvasPreviewProps {
   onDeleteOverlay?: (id: string) => void;
   onRestoreOverlay?: (item: OverlayItem) => void;
   onOpenMobileTools?: () => void;
+  onLoadSample?: () => void;
+  videoLoadState?: VideoLoadState;
   onTogglePlay: () => void;
   onStop: () => void;
   onSeek: (time: number) => void;
@@ -42,6 +44,8 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
   onDeleteOverlay,
   onRestoreOverlay,
   onOpenMobileTools,
+  onLoadSample,
+  videoLoadState,
   onTogglePlay,
   onStop,
   onSeek,
@@ -336,6 +340,69 @@ export const CanvasPreview: React.FC<CanvasPreviewProps> = ({
             <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-indigo-600/95 text-white px-3 py-1 rounded-full text-[11px] font-bold shadow-xl border border-indigo-400/40 pointer-events-none flex items-center gap-1.5 z-30 animate-pulse whitespace-nowrap">
               <Move className="w-3.5 h-3.5" />
               <span>移動中（指を離すと配置確定）</span>
+            </div>
+          )}
+
+          {/* Video Resolution & Aspect Ratio Pill (When loaded) */}
+          {!isMovingMode && videoLoadState?.status === 'loaded' && videoLoadState.diagnostics && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] font-mono text-zinc-300 border border-zinc-700/60 pointer-events-none flex items-center gap-1.5 shadow-md z-20 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>{videoLoadState.diagnostics.width}×{videoLoadState.diagnostics.height}</span>
+              <span className="text-zinc-500">•</span>
+              <span>{videoLoadState.diagnostics.isPortrait ? '9:16' : 'フィット'}</span>
+            </div>
+          )}
+
+          {/* Video Loading Screen Overlay */}
+          {videoLoadState?.status === 'loading' && (
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-12 h-12 border-3 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-3.5" />
+              <p className="text-sm font-bold text-white mb-1">動画を解析中...</p>
+              <p className="text-xs text-zinc-400 max-w-[240px] truncate mb-2">
+                {videoLoadState.fileName || '動画ファイル'}
+              </p>
+              <span className="inline-block px-2.5 py-1 rounded-full bg-indigo-950/60 border border-indigo-800/60 text-[10px] text-indigo-300">
+                デコーダー検証中
+              </span>
+            </div>
+          )}
+
+          {/* Video Error Screen Overlay with Help & Actions */}
+          {videoLoadState?.status === 'error' && (
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-30 flex flex-col items-center justify-center p-5 text-center overflow-y-auto">
+              <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mb-2.5 border border-rose-500/40 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-rose-300 mb-1">
+                {videoLoadState.errorMessage || '動画読み込みエラー'}
+              </p>
+              <p className="text-[11px] text-zinc-300 leading-relaxed mb-3 max-w-[260px]">
+                {videoLoadState.errorDetail || 'ブラウザでこの動画形式を再生できませんでした。'}
+              </p>
+              <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-2.5 mb-4 text-[10px] text-zinc-400 max-w-[260px] text-left">
+                <p className="font-semibold text-zinc-300 mb-0.5">📱 スマホ解決ヒント:</p>
+                <p>iPhoneの高効率(HEVC)やProRes形式はブラウザ非対応の場合があります。標準MP4(H.264)をご使用ください。</p>
+              </div>
+              <div className="flex flex-col gap-2 w-full max-w-[220px]">
+                {onLoadSample && (
+                  <button
+                    type="button"
+                    onClick={onLoadSample}
+                    className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-md active:scale-95"
+                  >
+                    サンプル動画で試す
+                  </button>
+                )}
+                {onOpenMobileTools && (
+                  <button
+                    type="button"
+                    onClick={onOpenMobileTools}
+                    className="w-full py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 transition active:scale-95"
+                  >
+                    別のファイルを選択
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

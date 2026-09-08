@@ -11,8 +11,14 @@ import {
   Sparkles,
   Upload,
   ZoomIn,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
+  Info,
+  RefreshCw,
+  Smartphone,
 } from 'lucide-react';
-import { ColorFilterSettings, OverlayItem, ZoomAnimation } from '../types';
+import { ColorFilterSettings, OverlayItem, ZoomAnimation, VideoLoadState } from '../types';
 
 interface SidebarTabsProps {
   onFileUpload: (file: File) => void;
@@ -34,6 +40,7 @@ interface SidebarTabsProps {
   onStartExport: () => void;
   hasVideo: boolean;
   onSwitchToPreview?: () => void;
+  videoLoadState?: VideoLoadState;
 }
 
 export const SidebarTabs: React.FC<SidebarTabsProps> = ({
@@ -56,6 +63,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   onStartExport,
   hasVideo,
   onSwitchToPreview,
+  videoLoadState,
 }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'stamp' | 'effects' | 'export'>('stamp');
 
@@ -145,6 +153,149 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
         {/* ===================== TAB 1: VIDEO ===================== */}
         {activeTab === 'video' && (
           <div className="space-y-5">
+            {/* 1. Real-time Video Load & Diagnostic Check Card */}
+            {videoLoadState && videoLoadState.status !== 'idle' && (
+              <div className="space-y-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-indigo-400" />
+                  動画読み込みステータス・診断チェック
+                </h2>
+
+                {/* Loading State */}
+                {videoLoadState.status === 'loading' && (
+                  <div className="bg-indigo-950/30 border border-indigo-500/40 rounded-2xl p-4 space-y-2.5 animate-pulse">
+                    <div className="flex items-center gap-2.5 text-indigo-300 font-bold text-xs">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
+                      <span>動画ファイルを読み込み・解析中...</span>
+                    </div>
+                    <div className="text-xs text-zinc-300 space-y-1 pl-6">
+                      <p className="truncate font-mono text-[11px] text-zinc-400">
+                        対象: {videoLoadState.fileName || '選択された動画'}
+                      </p>
+                      <p className="text-[11px] text-zinc-400">
+                        ブラウザのデコーダーで解像度・アスペクト比・コーデックを検証しています...
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error State with Troubleshooting */}
+                {videoLoadState.status === 'error' && (
+                  <div className="bg-rose-950/40 border border-rose-500/50 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-rose-300 font-bold text-xs">
+                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>{videoLoadState.errorMessage || '動画の読み込みに失敗しました'}</span>
+                    </div>
+
+                    <p className="text-xs text-rose-200/90 leading-relaxed pl-6">
+                      {videoLoadState.errorDetail || 'お使いのブラウザでこの動画形式を再生できませんでした。'}
+                    </p>
+
+                    {/* Smartphone Troubleshooting Hint */}
+                    <div className="bg-zinc-950/60 rounded-xl p-3 text-[11px] text-zinc-300 space-y-1.5 border border-zinc-800">
+                      <div className="font-semibold text-amber-300 flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>スマホ（iPhone / Android）での確認ポイント:</span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-zinc-400 text-[11px]">
+                        <li>iPhoneで撮影した動画（高効率HEVC形式やHDR）はブラウザによって再生制限がかかる場合があります。</li>
+                        <li>標準的なMP4（H.264形式）動画を選択するか、写真アプリの共有から保存した動画をお試しください。</li>
+                        <li>動作確認として下記の「サンプル動画を生成して読込」をお試しいただけます。</li>
+                      </ul>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={onLoadSample}
+                        className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm active:scale-95 text-center"
+                      >
+                        サンプル動画で試す
+                      </button>
+                      <label className="flex-1 py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 transition active:scale-95 text-center cursor-pointer">
+                        <span>別のファイルを選択</span>
+                        <input
+                          type="file"
+                          accept="video/*,video/mp4,video/quicktime,video/webm"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) onFileUpload(f);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loaded Success State with Full Diagnostics */}
+                {videoLoadState.status === 'loaded' && videoLoadState.diagnostics && (
+                  <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>動画チェック完了: 正常に読み込まれました</span>
+                      </div>
+                      {onSwitchToPreview && (
+                        <button
+                          type="button"
+                          onClick={onSwitchToPreview}
+                          className="lg:hidden text-[11px] text-indigo-400 hover:text-indigo-300 font-bold underline"
+                        >
+                          プレビューへ 📹
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Diagnostic Key-Value Grid */}
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-zinc-950/50 p-3 rounded-xl border border-zinc-800/80">
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">ファイル名</span>
+                        <span className="font-medium text-zinc-200 truncate block max-w-[150px]" title={videoLoadState.diagnostics.name}>
+                          {videoLoadState.diagnostics.name}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">ファイル容量</span>
+                        <span className="font-mono text-zinc-300">
+                          {videoLoadState.diagnostics.sizeMB > 0 ? `${videoLoadState.diagnostics.sizeMB} MB` : '自動生成'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">解像度 (WxH)</span>
+                        <span className="font-mono font-semibold text-zinc-200">
+                          {videoLoadState.diagnostics.width} × {videoLoadState.diagnostics.height} px
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block">再生時間</span>
+                        <span className="font-mono text-zinc-200">
+                          {Math.floor(videoLoadState.diagnostics.duration / 60)}分
+                          {(videoLoadState.diagnostics.duration % 60).toFixed(1)}秒
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Aspect Ratio Assessment */}
+                    <div className="text-xs">
+                      {videoLoadState.diagnostics.isPortrait ? (
+                        <div className="flex items-center gap-1.5 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-medium">
+                          <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                          <span>9:16 縦長動画として最適です（YouTube Shorts / TikTokにそのまま対応）</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-medium">
+                          <Info className="w-3.5 h-3.5 shrink-0" />
+                          <span>横長動画です。9:16キャンバス中央にフィット配置中（「エフェクト」タブで拡大・クロップ可能）</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. File Upload Dropzone */}
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-1.5">
                 <Upload className="w-3.5 h-3.5 text-indigo-400" />
@@ -155,14 +306,14 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                   <Film className="w-6 h-6" />
                 </div>
                 <span className="text-sm font-semibold text-zinc-200 mb-1">
-                  動画ファイルをドラッグ＆ドロップ
+                  動画ファイルをタップまたはドロップ
                 </span>
                 <span className="text-xs text-zinc-500">
-                  MP4 / WebM / QuickTime (9:16 Shorts推奨)
+                  MP4 / WebM / QuickTime (9:16 縦長動画推奨)
                 </span>
                 <input
                   type="file"
-                  accept="video/mp4,video/webm,video/quicktime"
+                  accept="video/*,video/mp4,video/quicktime,video/webm"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) onFileUpload(f);
@@ -172,6 +323,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
               </label>
             </div>
 
+            {/* 3. Sample Generator */}
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
