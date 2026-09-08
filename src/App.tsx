@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Play, SlidersHorizontal } from 'lucide-react';
 import { Header } from './components/Header';
 import { CanvasPreview } from './components/CanvasPreview';
 import { SidebarTabs } from './components/SidebarTabs';
@@ -10,6 +11,9 @@ import { exportShortsVideo, ExportProgress } from './utils/exportVideo';
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Mobile View Switcher (Preview vs Editing Tools)
+  const [mobileView, setMobileView] = useState<'preview' | 'tools'>('preview');
 
   // Video State
   const [videoSrc, setVideoSrc] = useState<string>('');
@@ -325,6 +329,11 @@ export default function App() {
     }
   };
 
+  const handleRestoreOverlay = (item: OverlayItem) => {
+    setOverlays((prev) => [...prev, item]);
+    setSelectedOverlayId(item.id);
+  };
+
   // Zoom & Filter Handlers
   const handleUpdateZoom = (updates: Partial<ZoomAnimation>) => {
     setZoom((prev) => ({ ...prev, ...updates }));
@@ -379,48 +388,86 @@ export default function App() {
         hasVideo={Boolean(videoSrc)}
       />
 
+      {/* Mobile View Switcher (Segmented Control for Smartphones) */}
+      <div className="lg:hidden flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-900/90 border-b border-zinc-800 shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileView('preview')}
+          className={`flex-1 max-w-[190px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-xl text-xs font-bold transition active:scale-95 ${
+            mobileView === 'preview'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+              : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Play className="w-3.5 h-3.5" />
+          <span>プレビュー</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView('tools')}
+          className={`flex-1 max-w-[190px] flex items-center justify-center gap-2 py-1.5 px-3 rounded-xl text-xs font-bold transition active:scale-95 ${
+            mobileView === 'tools'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+              : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <span>編集ツール {overlays.length > 0 && `(${overlays.length})`}</span>
+        </button>
+      </div>
+
       {/* Main Workspace: 9:16 Canvas Viewport & Sidebar Controls */}
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
-        <CanvasPreview
-          videoRef={videoRef}
-          currentTime={currentTime}
-          duration={videoDuration}
-          isPlaying={isPlaying}
-          isLooping={isLooping}
-          isMuted={isMuted}
-          zoom={zoom}
-          filters={filters}
-          overlays={overlays}
-          selectedOverlayId={selectedOverlayId}
-          onSelectOverlay={setSelectedOverlayId}
-          onUpdateOverlayPosition={handleUpdateOverlayPosition}
-          onTogglePlay={handleTogglePlay}
-          onStop={handleStop}
-          onSeek={handleSeek}
-          onToggleLoop={handleToggleLoop}
-          onToggleMute={handleToggleMute}
-        />
+        {/* Canvas Preview: Full height on mobile when active */}
+        <div className={`flex-1 flex-col min-h-0 ${mobileView === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
+          <CanvasPreview
+            videoRef={videoRef}
+            currentTime={currentTime}
+            duration={videoDuration}
+            isPlaying={isPlaying}
+            isLooping={isLooping}
+            isMuted={isMuted}
+            zoom={zoom}
+            filters={filters}
+            overlays={overlays}
+            selectedOverlayId={selectedOverlayId}
+            onSelectOverlay={setSelectedOverlayId}
+            onUpdateOverlayPosition={handleUpdateOverlayPosition}
+            onDeleteOverlay={handleDeleteOverlay}
+            onRestoreOverlay={handleRestoreOverlay}
+            onOpenMobileTools={() => setMobileView('tools')}
+            onTogglePlay={handleTogglePlay}
+            onStop={handleStop}
+            onSeek={handleSeek}
+            onToggleLoop={handleToggleLoop}
+            onToggleMute={handleToggleMute}
+          />
+        </div>
 
-        <SidebarTabs
-          onFileUpload={handleFileUpload}
-          onLoadSample={handleLoadSampleVideo}
-          isLoadingSample={isLoadingSample}
-          videoDuration={videoDuration}
-          overlays={overlays}
-          selectedOverlayId={selectedOverlayId}
-          onSelectOverlay={setSelectedOverlayId}
-          onAddText={handleAddText}
-          onAddStamp={handleAddStamp}
-          onAddImageStamp={handleAddImageStamp}
-          onUpdateOverlay={handleUpdateOverlay}
-          onDeleteOverlay={handleDeleteOverlay}
-          zoom={zoom}
-          onUpdateZoom={handleUpdateZoom}
-          filters={filters}
-          onUpdateFilters={handleUpdateFilters}
-          onStartExport={handleStartExport}
-          hasVideo={Boolean(videoSrc)}
-        />
+        {/* Sidebar Tabs: Full height scrollable on mobile when active */}
+        <div className={`flex-col ${mobileView === 'tools' ? 'flex flex-1 h-full' : 'hidden lg:flex'}`}>
+          <SidebarTabs
+            onFileUpload={handleFileUpload}
+            onLoadSample={handleLoadSampleVideo}
+            isLoadingSample={isLoadingSample}
+            videoDuration={videoDuration}
+            overlays={overlays}
+            selectedOverlayId={selectedOverlayId}
+            onSelectOverlay={setSelectedOverlayId}
+            onAddText={handleAddText}
+            onAddStamp={handleAddStamp}
+            onAddImageStamp={handleAddImageStamp}
+            onUpdateOverlay={handleUpdateOverlay}
+            onDeleteOverlay={handleDeleteOverlay}
+            zoom={zoom}
+            onUpdateZoom={handleUpdateZoom}
+            filters={filters}
+            onUpdateFilters={handleUpdateFilters}
+            onStartExport={handleStartExport}
+            hasVideo={Boolean(videoSrc)}
+            onSwitchToPreview={() => setMobileView('preview')}
+          />
+        </div>
       </main>
 
       {/* Export Progress & Download Modal */}

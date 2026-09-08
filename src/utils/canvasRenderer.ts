@@ -349,6 +349,24 @@ function drawSelectionBox(ctx: CanvasRenderingContext2D, item: OverlayItem) {
     ctx.fill();
     ctx.stroke();
   }
+
+  // Action hint pill above selection box for mobile guidance
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+  ctx.strokeStyle = '#6366f1';
+  ctx.lineWidth = 2;
+  const pillW = 320;
+  const pillH = 38;
+  const pillY = -h / 2 - pillH - 12;
+  drawRoundedRect(ctx, -pillW / 2, pillY, pillW, pillH, 10);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('長押しで移動 • 2回タップで削除', 0, pillY + pillH / 2);
+
   ctx.restore();
 }
 

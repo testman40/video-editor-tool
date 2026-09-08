@@ -42,16 +42,17 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onLoadSample}
           disabled={isLoadingSample}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition active:scale-95 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition active:scale-95 disabled:opacity-50"
         >
           <Sparkles className={`w-3.5 h-3.5 text-amber-400 ${isLoadingSample ? 'animate-spin' : ''}`} />
-          <span>{isLoadingSample ? '生成中...' : 'サンプル動画'}</span>
+          <span className="hidden sm:inline">{isLoadingSample ? '生成中...' : 'サンプル動画'}</span>
+          <span className="sm:hidden">{isLoadingSample ? '...' : 'サンプル'}</span>
         </button>
 
         <button
           type="button"
           onClick={onOpenStandaloneModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition active:scale-95"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition active:scale-95"
           title="単一HTMLファイル（In-lined CSS/JS）のコード表示・保存"
         >
           <Code2 className="w-3.5 h-3.5 text-indigo-400" />
@@ -63,10 +64,11 @@ export const Header: React.FC<HeaderProps> = ({
           type="button"
           onClick={onOpenExport}
           disabled={!hasVideo}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/30 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/30 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>MP4書き出し</span>
+          <span className="hidden sm:inline">MP4書き出し</span>
+          <span className="sm:hidden">書き出し</span>
         </button>
       </div>
     </header>

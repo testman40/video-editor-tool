@@ -33,6 +33,7 @@ interface SidebarTabsProps {
   onUpdateFilters: (updates: Partial<ColorFilterSettings>) => void;
   onStartExport: () => void;
   hasVideo: boolean;
+  onSwitchToPreview?: () => void;
 }
 
 export const SidebarTabs: React.FC<SidebarTabsProps> = ({
@@ -54,6 +55,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   onUpdateFilters,
   onStartExport,
   hasVideo,
+  onSwitchToPreview,
 }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'stamp' | 'effects' | 'export'>('stamp');
 
@@ -66,7 +68,23 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   const selectedOverlay = overlays.find((o) => o.id === selectedOverlayId);
 
   return (
-    <aside className="w-full lg:w-[420px] bg-zinc-900 border-l border-zinc-800 flex flex-col h-auto lg:h-[calc(100vh-64px)] shrink-0 overflow-hidden">
+    <aside className="w-full lg:w-[420px] bg-zinc-900 border-l border-zinc-800 flex flex-col flex-1 h-full lg:h-[calc(100vh-64px)] shrink-0 overflow-hidden">
+      {/* Mobile Notice / Shortcut to Preview */}
+      {onSwitchToPreview && (
+        <div className="lg:hidden px-3 py-2 bg-indigo-950/50 border-b border-indigo-900/50 flex items-center justify-between shrink-0">
+          <span className="text-[11px] text-indigo-300 font-medium">
+            スタンプは長押しで移動、2回タップで削除可能
+          </span>
+          <button
+            type="button"
+            onClick={onSwitchToPreview}
+            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
+          >
+            プレビュー 📹
+          </button>
+        </div>
+      )}
+
       {/* Tab Navigation */}
       <div className="flex border-b border-zinc-800 bg-zinc-950/60 shrink-0">
         <button
